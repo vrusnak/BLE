@@ -76,7 +76,7 @@ public class BLEScanner {
             Utils.toast(mainActivity.getApplicationContext(), "Found new device");
             Log.e("Device found", device.getName() + " " + device.getAddress());
 
-            if(device.getName().equals("My peripheral")) {
+            if(device.getName().equals("My p")) {
                 scanLeDevice(false);
                 Log.e("Scaning stopped", "true");
 

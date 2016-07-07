@@ -1,17 +1,11 @@
 package com.example.vrusn.bletest;
 
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothClass;
-import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
-import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
-import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
-import android.bluetooth.le.BluetoothLeScanner;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.support.v7.app.AppCompatActivity;
@@ -19,21 +13,20 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.ListView;
-import android.widget.ScrollView;
 import android.widget.Toast;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
 
     private final static int REQUEST_ENABLE_BT = 1;
+    private static final UUID Battery_Service_UUID = UUID.fromString("00001111-0000-1000-8000-00805f9b34fb");
+    private static final UUID Battery_Level_UUID = UUID.fromString("00002222-0000-1000-8000-00805f9b34fb");
 
     private BluetoothAdapter bluetoothAdapter;
     private BLEScanner bleScanner;
-    private BLEDevice bleDevice;
     private DeviceManager deviceManager;
 
     private BluetoothGatt bluetoothGatt;
@@ -81,7 +74,9 @@ public class MainActivity extends AppCompatActivity {
 
     public void connectDevice() {
         BLEDevice myDevice = deviceManager.getDevicesArrayList().get(0);
+
         bluetoothGatt = myDevice.getBTDevice().connectGatt(getApplicationContext(), false, btleGattCallback);
+        bluetoothGatt.connect();
     }
 
     private final BluetoothGattCallback btleGattCallback = new BluetoothGattCallback() {
@@ -90,8 +85,10 @@ public class MainActivity extends AppCompatActivity {
         public void onCharacteristicChanged(BluetoothGatt gatt, final BluetoothGattCharacteristic characteristic) {
             // this will get called anytime you perform a read or write characteristic operation
 
-            //read the characteristic data
-            byte[] data = characteristic.getValue();
+//            //read the characteristic data
+//            gatt.readCharacteristic(characteristic);
+//            byte[] data = characteristic.getValue();
+//            Log.e("Recieved", data.toString());
         }
 
         @Override
@@ -99,33 +96,66 @@ public class MainActivity extends AppCompatActivity {
             // this will get called when a device connects or disconnects
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 Log.e("Connected", gatt.getDevice().getName());
+                Log.e("Address", gatt.getDevice().getAddress());
 
                 Log.e("Discovering services", "...");
-                bluetoothGatt.discoverServices();
+                gatt.discoverServices();
             }
         }
 
         @Override
         public void onServicesDiscovered(final BluetoothGatt gatt, final int status) {
-            List<BluetoothGattService> services = bluetoothGatt.getServices();
+            if (gatt == null)
+                Log.e("gatt", null);
 
-            for (BluetoothGattService service : services) {
-                Log.e("Service UUID", service.getUuid().toString());
-                List<BluetoothGattCharacteristic> characteristics = service.getCharacteristics();
-                for (BluetoothGattCharacteristic characteristic : characteristics)
-                    Log.e("Charasteristic UUID", characteristic.getUuid().toString());
-                Log.e(" "," ");
-            }
-
-//            for (BluetoothGattDescriptor descriptor : characteristic.getDescriptors()) {
+//            List<BluetoothGattService> services = bluetoothGatt.getServices();
+//
+//            for (BluetoothGattService service : services) {
+//                Log.e("Service UUID", service.getUuid().toString());
+//                List<BluetoothGattCharacteristic> characteristics = service.getCharacteristics();
+//                for (BluetoothGattCharacteristic characteristic : characteristics)
+//                    Log.e("Charasteristic UUID", characteristic.getUuid().toString());
+//                Log.e(" ", " ");
+//            }
+//
+//                        for (BluetoothGattDescriptor descriptor : characteristic.getDescriptors()) {
 //                //find descriptor UUID that matches Client Characteristic Configuration (0x2902)
 //                // and then call setValue on that descriptor
 //
 //                descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
 //                bluetoothGatt.writeDescriptor(descriptor);
 //            }
+
+            BluetoothGattService myService = gatt.getService(Battery_Service_UUID);
+            if (myService == null)
+                Log.e("Ex", "Custom service not found!");
+            else
+                Log.e("Custom service found!", myService.getUuid().toString());
+
+            BluetoothGattCharacteristic myCharacteristic = myService.getCharacteristic(Battery_Level_UUID);
+            if (myCharacteristic == null)
+                Log.e("Ex", "Custom characteristic not found!");
+            else
+                Log.e("Custom charac. found!", myCharacteristic.getUuid().toString());
+
+            writeToCharacteristic(myCharacteristic, gatt, "TEST");
+            readFromCharacteristic(myService);
         }
     };
+
+    private void writeToCharacteristic(BluetoothGattCharacteristic characteristic, BluetoothGatt gatt, String str) {
+        byte[] value = str.getBytes();
+        characteristic.setValue(value);
+        Log.e("Successful write", gatt.writeCharacteristic(characteristic) + "");
+        Log.e("Sent", str);
+    }
+
+    private void readFromCharacteristic(BluetoothGattService service) {
+        BluetoothGattCharacteristic readCharacteristic = service.getCharacteristic(Battery_Level_UUID);
+        byte[] data = readCharacteristic.getValue();
+        String recieved = new String(data, StandardCharsets.UTF_8);
+        Log.e("Recieved", recieved);
+    }
 
     private void closeConnection() {
         bluetoothGatt.disconnect();
