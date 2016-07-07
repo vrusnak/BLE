@@ -83,12 +83,17 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, final BluetoothGattCharacteristic characteristic) {
-            // this will get called anytime you perform a read or write characteristic operation
+            Log.e("onChange callback", "...");
+        }
 
-//            //read the characteristic data
-//            gatt.readCharacteristic(characteristic);
-//            byte[] data = characteristic.getValue();
-//            Log.e("Recieved", data.toString());
+        @Override
+        public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+            Log.e("Write callback", "...");
+        }
+
+        @Override
+        public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+            Log.e("Read callback", "...");
         }
 
         @Override
@@ -139,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
                 Log.e("Custom charac. found!", myCharacteristic.getUuid().toString());
 
             writeToCharacteristic(myCharacteristic, gatt, "TEST");
-            readFromCharacteristic(myService);
+            readFromCharacteristic(myCharacteristic, gatt);
         }
     };
 
@@ -150,10 +155,11 @@ public class MainActivity extends AppCompatActivity {
         Log.e("Sent", str);
     }
 
-    private void readFromCharacteristic(BluetoothGattService service) {
-        BluetoothGattCharacteristic readCharacteristic = service.getCharacteristic(Battery_Level_UUID);
-        byte[] data = readCharacteristic.getValue();
+    private void readFromCharacteristic(BluetoothGattCharacteristic characteristic, BluetoothGatt gatt) {
+        //BluetoothGattCharacteristic readCharacteristic = service.getCharacteristic(Battery_Level_UUID);
+        byte[] data = characteristic.getValue();
         String recieved = new String(data, StandardCharsets.UTF_8);
+        Log.e("Successful write", gatt.readCharacteristic(characteristic) + "");
         Log.e("Recieved", recieved);
     }
 
