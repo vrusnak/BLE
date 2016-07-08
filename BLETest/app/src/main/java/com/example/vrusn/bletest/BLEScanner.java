@@ -12,24 +12,16 @@ import android.util.Log;
  */
 public class BLEScanner {
 
-    private static final long SCAN_PERIOD = 10000;
-
     private MainActivity mainActivity;
-
-    private long scanPeriod;
-    private int signalStrength;
-
-    private boolean scanning;
+    private BluetoothAdapter bluetoothAdapter;
     private Handler handler;
 
-    private BluetoothAdapter bluetoothAdapter;
+    private boolean scanning;
 
-    public BLEScanner(MainActivity mainActivity, long scanPeriod, int signalStrength) {
+    public BLEScanner(MainActivity mainActivity) {
         this.mainActivity = mainActivity;
-        this.scanPeriod = scanPeriod;
-        this.signalStrength = signalStrength;
-
-        handler = new Handler();
+        this.handler = new Handler();
+        this.scanning = false;
 
         // Initializes Bluetooth adapter.
         final BluetoothManager bluetoothManager = (BluetoothManager) mainActivity.getSystemService(Context.BLUETOOTH_SERVICE);
@@ -58,13 +50,12 @@ public class BLEScanner {
 
                     scanLeDevice(false);
                 }
-            }, scanPeriod);
+            }, Constants.SCAN_PERIOD);
 
             scanning = true;
             bluetoothAdapter.startLeScan(leScanCallback);
 //            mBluetoothAdapter.startLeScan(uuids, mLeScanCallback);
-        }
-        else {
+        } else {
             scanning = false;
             bluetoothAdapter.stopLeScan(leScanCallback);
         }
@@ -73,16 +64,17 @@ public class BLEScanner {
     private BluetoothAdapter.LeScanCallback leScanCallback = new BluetoothAdapter.LeScanCallback() {
         @Override
         public void onLeScan(final BluetoothDevice device, final int rssi, final byte[] scanRecord) {
-            Utils.toast(mainActivity.getApplicationContext(), "Found new device");
-            Log.e("Device found", device.getName() + " " + device.getAddress());
+            if (device != null) {
+                // Utils.toast(mainActivity.getApplicationContext(), "Found new device");
+                Log.e("Device found", device.getName() + " " + device.getAddress());
 
-            if(device.getName().equals("My p")) {
-                scanLeDevice(false);
-                Log.e("Scaning stopped", "true");
+                if (device.getName().equals("My peripheral")) {
+                    scanLeDevice(false);
 
-                BLEDevice bleDevice = new BLEDevice(device);
-                mainActivity.addDevice(bleDevice);
-                mainActivity.connectDevice();
+                    BLEDevice bleDevice = new BLEDevice(device);
+                    // mainActivity.addDevice(bleDevice);
+                    mainActivity.connectDevice(bleDevice);
+                }
             }
         }
     };

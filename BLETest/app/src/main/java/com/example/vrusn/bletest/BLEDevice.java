@@ -23,11 +23,13 @@ public class BLEDevice {
         return bluetoothDevice.getName();
     }
 
-    public BluetoothDevice getBTDevice() {return this.bluetoothDevice;}
-
-    public void setRSSI(int rssi) {
-        this.rssi = rssi;
+    public BluetoothDevice getDevice() {
+        return this.bluetoothDevice;
     }
+
+//    public void setRSSI(int rssi) {
+//        this.rssi = rssi;
+//    }
 
     public int getRSSI() {
         return rssi;

@@ -1,11 +1,13 @@
 package com.example.vrusn.bletest;
 
+import android.app.ActionBar;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.support.v7.app.AppCompatActivity;
@@ -15,21 +17,19 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
+import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
 
-    private final static int REQUEST_ENABLE_BT = 1;
-    private static final UUID Battery_Service_UUID = UUID.fromString("00001111-0000-1000-8000-00805f9b34fb");
-    private static final UUID Battery_Level_UUID = UUID.fromString("00002222-0000-1000-8000-00805f9b34fb");
-
     private BluetoothAdapter bluetoothAdapter;
-    private BLEScanner bleScanner;
-    private DeviceManager deviceManager;
-
     private BluetoothGatt bluetoothGatt;
+
+    private BLEScanner bleScanner;
+    //private DeviceManager deviceManager;
 
     private Button btnScan;
 
@@ -38,20 +38,19 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        bleScanner = new BLEScanner(this, 5000, -80);
+        hideStatusBar();
+
+        File file = getFilesDir();
+        Log.e("getFileDir", getFilesDir() + "");
+
+        //bleScanner = new BLEScanner(this);
+
+//        ArrayList<BLEDevice> devicesArrayList = new ArrayList<>();
+//        deviceManager = new DeviceManager();
+//        deviceManager.setDevicesArrayList(devicesArrayList);
 
         this.btnScan = (Button) findViewById(R.id.btnScan);
-        btnScan.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                bleScanner.scanLeDevice(true);
-            }
-        });
-
-        deviceManager = new DeviceManager();
-        ArrayList<BLEDevice> devicesArrayList = new ArrayList<>();
-
-        deviceManager.setDevicesArrayList(devicesArrayList);
+        setListeners();
 
         // Use this check to determine whether BLE is supported on the device. Then
         // you can selectively disable BLE-related features.
@@ -64,18 +63,31 @@ public class MainActivity extends AppCompatActivity {
         // displays a dialog requesting user permission to enable Bluetooth.
         if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled()) {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+            startActivityForResult(enableBtIntent, Constants.REQUEST_ENABLE_BT);
         }
     }
 
-    public void addDevice(BLEDevice device) {
-        deviceManager.getDevicesArrayList().add(device);
+    private void hideStatusBar() {
+        View decorView = getWindow().getDecorView();
+        int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_FULLSCREEN;
+        decorView.setSystemUiVisibility(uiOptions);
     }
 
-    public void connectDevice() {
-        BLEDevice myDevice = deviceManager.getDevicesArrayList().get(0);
+    private void setListeners() {
+        btnScan.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                bleScanner.scanLeDevice(true);
+            }
+        });
+    }
 
-        bluetoothGatt = myDevice.getBTDevice().connectGatt(getApplicationContext(), false, btleGattCallback);
+//    public void addDevice(BLEDevice device) {
+//        deviceManager.getDevicesArrayList().add(device);
+//    }
+
+    public void connectDevice(BLEDevice device) {
+        bluetoothGatt = device.getDevice().connectGatt(getApplicationContext(), false, btleGattCallback);
         bluetoothGatt.connect();
     }
 
@@ -83,28 +95,18 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, final BluetoothGattCharacteristic characteristic) {
-            Log.e("onChange callback", "...");
-        }
-
-        @Override
-        public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
-            Log.e("Write callback", "...");
-        }
-
-        @Override
-        public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
-            Log.e("Read callback", "...");
         }
 
         @Override
         public void onConnectionStateChange(final BluetoothGatt gatt, final int status, final int newState) {
-            // this will get called when a device connects or disconnects
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 Log.e("Connected", gatt.getDevice().getName());
                 Log.e("Address", gatt.getDevice().getAddress());
 
                 Log.e("Discovering services", "...");
                 gatt.discoverServices();
+            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                Log.e("Device disconnected", gatt.getDevice().getName());
             }
         }
 
@@ -113,8 +115,8 @@ public class MainActivity extends AppCompatActivity {
             if (gatt == null)
                 Log.e("gatt", null);
 
-//            List<BluetoothGattService> services = bluetoothGatt.getServices();
-//
+            List<BluetoothGattService> services = bluetoothGatt.getServices();
+
 //            for (BluetoothGattService service : services) {
 //                Log.e("Service UUID", service.getUuid().toString());
 //                List<BluetoothGattCharacteristic> characteristics = service.getCharacteristics();
@@ -131,20 +133,26 @@ public class MainActivity extends AppCompatActivity {
 //                bluetoothGatt.writeDescriptor(descriptor);
 //            }
 
-            BluetoothGattService myService = gatt.getService(Battery_Service_UUID);
-            if (myService == null)
-                Log.e("Ex", "Custom service not found!");
-            else
-                Log.e("Custom service found!", myService.getUuid().toString());
+            Log.e("Service list size", services.size() + "");
 
-            BluetoothGattCharacteristic myCharacteristic = myService.getCharacteristic(Battery_Level_UUID);
-            if (myCharacteristic == null)
-                Log.e("Ex", "Custom characteristic not found!");
-            else
-                Log.e("Custom charac. found!", myCharacteristic.getUuid().toString());
+            if (services.size() != 0) {
+                BluetoothGattService myService = gatt.getService(Constants.Custom_Service_UUID);
+                if (myService == null)
+                    Log.e("Ex", "Custom service not found!");
+                else
+                    Log.e("Custom service found!", myService.getUuid().toString());
 
-            writeToCharacteristic(myCharacteristic, gatt, "TEST");
-            readFromCharacteristic(myCharacteristic, gatt);
+                if (myService != null) {
+                    BluetoothGattCharacteristic myCharacteristic = myService.getCharacteristic(Constants.Custom_Characteristic_UUID);
+                    if (myCharacteristic == null)
+                        Log.e("Ex", "Custom characteristic not found!");
+                    else
+                        Log.e("Custom charac. found!", myCharacteristic.getUuid().toString());
+
+                    writeToCharacteristic(myCharacteristic, gatt, Constants.CUSTOM_TEXT);
+                    readFromCharacteristic(myService);
+                }
+            }
         }
     };
 
@@ -155,11 +163,10 @@ public class MainActivity extends AppCompatActivity {
         Log.e("Sent", str);
     }
 
-    private void readFromCharacteristic(BluetoothGattCharacteristic characteristic, BluetoothGatt gatt) {
-        //BluetoothGattCharacteristic readCharacteristic = service.getCharacteristic(Battery_Level_UUID);
-        byte[] data = characteristic.getValue();
+    private void readFromCharacteristic(BluetoothGattService service) {
+        BluetoothGattCharacteristic readCharacteristic = service.getCharacteristic(Constants.Custom_Characteristic_UUID);
+        byte[] data = readCharacteristic.getValue();
         String recieved = new String(data, StandardCharsets.UTF_8);
-        Log.e("Successful write", gatt.readCharacteristic(characteristic) + "");
         Log.e("Recieved", recieved);
     }
 
